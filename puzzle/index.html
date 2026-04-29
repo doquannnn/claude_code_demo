@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>BLOCKY</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="640" height="480"></canvas>
+<script>
+// ===== Constants =====
+const TS = 56; // tile size
+const FLOOR = 0, WALL = 1, START = 2, BLOCK = 3, TARGET = 4, ON_TARGET = 5;
+
+// ===== Levels =====
+const LEVELS = [
+  { grid: [  // 7x5 — solve: Right, Right
+    [1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,1],
+    [1,2,0,3,4,0,1],
+    [1,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1],
+  ]},
+  { grid: [  // 8x6 — 2 blocks
+    [1,1,1,1,1,1,1,1],
+    [1,2,0,0,0,0,0,1],
+    [1,0,0,3,0,0,0,1],
+    [1,0,0,0,0,3,0,1],
+    [1,0,4,0,0,4,0,1],
+    [1,1,1,1,1,1,1,1],
+  ]},
+  { grid: [  // 8x7 — 2 blocks with walls
+    [1,1,1,1,1,1,1,1],
+    [1,2,0,0,0,0,0,1],
+    [1,0,3,0,0,3,0,1],
+    [1,0,0,1,1,0,0,1],
+    [1,0,0,4,4,0,0,1],
+    [1,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1],
+  ]},
+  { grid: [  // 9x7 — 3 blocks
+    [1,1,1,1,1,1,1,1,1],
+    [1,2,0,0,0,0,0,0,1],
+    [1,0,3,0,1,0,3,0,1],
+    [1,0,0,0,0,0,0,0,1],
+    [1,0,0,3,0,0,0,0,1],
+    [1,0,4,0,4,0,4,0,1],
+    [1,1,1,1,1,1,1,1,1],
+  ]},
+  { grid: [  // 9x7 — 3 blocks harder
+    [1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,1,0,0,0,1],
+    [1,0,3,0,0,0,3,0,1],
+    [1,0,0,0,1,0,0,0,1],
+    [1,2,0,3,0,0,0,0,1],
+    [1,0,4,0,4,0,4,0,1],
+    [1,1,1,1,1,1,1,1,1],
+  ]},
+];
+
+// ===== Canvas =====
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// ===== State =====
+let phase = 'menu'; // menu | playing | levelComplete | win
+let lvlIdx = 0;
+let state = null;
+
+function copyGrid(g) { return g.map(r => [...r]); }
+
+function initLevel(idx) {
+  const src = LEVELS[idx].grid;
+  const grid = copyGrid(src);
+  let pos = null;
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      if (grid[r][c] === START) { pos = {r, c}; grid[r][c] = FLOOR; }
+    }
+  }
+  state = { grid, pos, history: [], moves: 0, idx };
+}
+
+function countTargets() {
+  let t = 0;
+  for (const row of state.grid) for (const v of row) if (v === TARGET) t++;
+  return t;
+}
+
+function allSolved() { return countTargets() === 0; }
+
+// ===== Input =====
+let mouse = {x: 0, y: 0};
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - r.left;
+  mouse.y = e.clientY - r.top;
+});
+
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  handleClick(mx, my);
+});
+
+function btnHit(mx, my, x, y, w, h) {
+  return mx >= x && mx <= x+w && my >= y && my <= y+h;
+}
+
+function handleClick(mx, my) {
+  // All action buttons at x=220,y=255,w=200,h=50 (center = 320,280)
+  const BTN = {x:220, y:255, w:200, h:50};
+  if (phase === 'menu') {
+    if (btnHit(mx, my, BTN.x, BTN.y, BTN.w, BTN.h)) {
+      lvlIdx = 0; initLevel(0); phase = 'playing';
+    }
+  } else if (phase === 'levelComplete') {
+    if (btnHit(mx, my, BTN.x, BTN.y, BTN.w, BTN.h)) {
+      lvlIdx++;
+      if (lvlIdx >= LEVELS.length) { phase = 'win'; }
+      else { initLevel(lvlIdx); phase = 'playing'; }
+    }
+  } else if (phase === 'win') {
+    if (btnHit(mx, my, BTN.x, BTN.y, BTN.w, BTN.h)) {
+      lvlIdx = 0; initLevel(0); phase = 'playing';
+    }
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (phase !== 'playing') return;
+  let dr = 0, dc = 0;
+  switch (e.code) {
+    case 'ArrowUp':    case 'KeyW': dr = -1; break;
+    case 'ArrowDown':  case 'KeyS': dr =  1; break;
+    case 'ArrowLeft':  case 'KeyA': dc = -1; break;
+    case 'ArrowRight': case 'KeyD': dc =  1; break;
+    case 'KeyZ': undo(); return;
+    default: return;
+  }
+  e.preventDefault();
+  if (dr !== 0 || dc !== 0) tryMove(dr, dc);
+});
+
+function tryMove(dr, dc) {
+  const {r, c} = state.pos;
+  const nr = r + dr, nc = c + dc;
+  const rows = state.grid.length, cols = state.grid[0].length;
+  if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return;
+  const tile = state.grid[nr][nc];
+  if (tile === WALL) return;
+
+  if (tile === BLOCK || tile === ON_TARGET) {
+    const br = nr + dr, bc = nc + dc;
+    if (br < 0 || br >= rows || bc < 0 || bc >= cols) return;
+    const bt = state.grid[br][bc];
+    if (bt === WALL || bt === BLOCK || bt === ON_TARGET) return;
+    // Push block
+    state.history.push({ pos: {...state.pos}, grid: copyGrid(state.grid) });
+    state.grid[nr][nc] = (tile === ON_TARGET) ? TARGET : FLOOR;
+    state.grid[br][bc] = (bt === TARGET) ? ON_TARGET : BLOCK;
+    state.pos = {r: nr, c: nc};
+    state.moves++;
+    if (allSolved()) phase = 'levelComplete';
+    return;
+  }
+
+  // Move to empty/target (player just walks over target tiles)
+  state.history.push({ pos: {...state.pos}, grid: copyGrid(state.grid) });
+  state.pos = {r: nr, c: nc};
+  state.moves++;
+}
+
+function undo() {
+  if (!state || state.history.length === 0) return;
+  const prev = state.history.pop();
+  state.pos = prev.pos;
+  state.grid = prev.grid;
+  state.moves = Math.max(0, state.moves - 1);
+}
+
+// ===== Rendering =====
+function drawTile(r, c, tile, ox, oy) {
+  const x = ox + c * TS, y = oy + r * TS;
+  // floor base
+  ctx.fillStyle = '#e8d5a3';
+  ctx.fillRect(x, y, TS, TS);
+  // grid line
+  ctx.strokeStyle = '#d4c292';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(x, y, TS, TS);
+
+  if (tile === WALL) {
+    ctx.fillStyle = '#555';
+    ctx.fillRect(x, y, TS, TS);
+    ctx.fillStyle = '#444';
+    ctx.fillRect(x+2, y+2, TS-4, TS-4);
+  } else if (tile === TARGET) {
+    ctx.strokeStyle = '#cc2222';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x+10, y+10); ctx.lineTo(x+TS-10, y+TS-10);
+    ctx.moveTo(x+TS-10, y+10); ctx.lineTo(x+10, y+TS-10);
+    ctx.stroke();
+  } else if (tile === BLOCK) {
+    ctx.fillStyle = '#ff8833';
+    ctx.fillRect(x+4, y+4, TS-8, TS-8);
+    ctx.fillStyle = '#cc6611';
+    ctx.fillRect(x+4, y+4, TS-8, 5);
+  } else if (tile === ON_TARGET) {
+    ctx.fillStyle = '#44cc44';
+    ctx.fillRect(x+4, y+4, TS-8, TS-8);
+    ctx.fillStyle = '#22aa22';
+    ctx.fillRect(x+4, y+4, TS-8, 5);
+    // checkmark
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x+14, y+TS/2); ctx.lineTo(x+TS/2-4, y+TS-16); ctx.lineTo(x+TS-14, y+16);
+    ctx.stroke();
+  }
+}
+
+function drawPlayer(r, c, ox, oy) {
+  const x = ox + c * TS + 6, y = oy + r * TS + 6;
+  const w = TS - 12, h = TS - 12;
+  ctx.fillStyle = '#4488ff';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#3366cc';
+  ctx.fillRect(x, y, w, 5);
+  // eyes
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x+6, y+8, 7, 7);
+  ctx.fillRect(x+w-13, y+8, 7, 7);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x+8, y+10, 4, 4);
+  ctx.fillRect(x+w-11, y+10, 4, 4);
+}
+
+function drawBtn(label, y, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(220, y, 200, 50);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 26px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, 320, y + 34);
+}
+
+function render() {
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, 640, 480);
+
+  if (phase === 'menu') {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 80px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('BLOCKY', 320, 130);
+    ctx.font = '22px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Push blocks onto targets', 320, 175);
+    ctx.fillStyle = '#666';
+    ctx.fillText('Arrow Keys / WASD  •  Z = Undo', 320, 215);
+    drawBtn('PLAY', 255, '#4488ff');
+    return;
+  }
+
+  if (phase === 'playing' || phase === 'levelComplete') {
+    const grid = state.grid;
+    const rows = grid.length, cols = grid[0].length;
+    const ox = Math.floor((640 - cols * TS) / 2);
+    const oy = Math.floor((480 - 60 - rows * TS) / 2) + 60;
+
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        drawTile(r, c, grid[r][c], ox, oy);
+
+    drawPlayer(state.pos.r, state.pos.c, ox, oy);
+
+    // HUD
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, 640, 55);
+    ctx.fillStyle = '#fff';
+    ctx.font = '22px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Level ${state.idx + 1} / ${LEVELS.length}`, 20, 36);
+    ctx.textAlign = 'right';
+    ctx.fillText(`Moves: ${state.moves}`, 620, 36);
+
+    if (phase === 'levelComplete') {
+      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.fillRect(0, 0, 640, 480);
+      ctx.fillStyle = '#44ee44';
+      ctx.font = 'bold 52px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Level Complete!', 320, 200);
+      const isLast = state.idx >= LEVELS.length - 1;
+      drawBtn(isLast ? 'FINISH' : 'Next Level', 255, '#4488ff');
+    }
+    return;
+  }
+
+  if (phase === 'win') {
+    ctx.fillStyle = '#44ee44';
+    ctx.font = 'bold 72px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('You Win!', 320, 160);
+    ctx.font = '26px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('All levels complete!', 320, 215);
+    drawBtn('Play Again', 255, '#4488ff');
+  }
+}
+
+// ===== Game Loop =====
+let last = 0;
+function loop(ts) {
+  const dt = Math.min((ts - last) / 1000, 0.05);
+  last = ts;
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
