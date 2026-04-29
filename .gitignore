@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Node / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+out/
+.cache/
+.next/
+.nuxt/
+.vite/
+
+# Logs
+logs/
+*.log
+
+# Environment & secrets
+.env
+.env.*
+*.pem
+*.key
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim / Emacs / misc editors
+*.swp
+*.swo
+*~

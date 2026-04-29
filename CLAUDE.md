@@ -1,42 +1,46 @@
-# Tic-Tac-Toe — Multi-Agent Build
+# Tic-Tac-Toe (Gomoku)
 
-## Project goal
-Build a minimal browser-based Tic-Tac-Toe game using 3 parallel agents.
+Browser-based 18×18 Gomoku game — first to 5 in a row wins. Zero dependencies, ES modules only.
 
-## File structure
-```
-index.html   ← UI (Agent 2 owns this)
-game.js      ← Game logic (Agent 1 owns this)
-game.test.js ← Tests      (Agent 3 owns this)
-```
+## Files
 
-## Contracts between files
+| File            | Purpose                        |
+|-----------------|--------------------------------|
+| `game.js`       | Game logic                     |
+| `index.html`    | UI                             |
+| `game.test.js`  | Tests (plain Node.js)          |
 
-### game.js must export
+## game.js exports
+
 ```js
-// Returns fresh board state
 function createGame()
-// → { board: [null×9], currentPlayer: 'X', winner: null, isDraw: false }
+// → { board: Array(324).fill(null), currentPlayer: 'X', winner: null, isDraw: false }
+// board is a flat 18×18 array (index = row * 18 + col)
 
-// Returns new state after a move (immutable)
-function makeMove(state, index)
+function makeMove(state, index)  // returns new state (immutable)
 
-// Returns 'X' | 'O' | null
-function checkWinner(board)
+function checkWinner(board)      // returns 'X' | 'O' | null
 ```
 
-### index.html must
-- Import game.js as a module (`<script type="module">`)
-- Render a 3×3 grid; clicking a cell calls makeMove()
-- Show current player, winner, or draw message
-- Include a "New game" button
+Win condition: 5 consecutive pieces in any row, column, or diagonal.
 
-### game.test.js must
-- Use plain Node.js (no test framework, just console.assert)
-- Import game.js and test: initial state, valid move, win detection, draw detection
-- Exit with code 0 on pass, 1 on failure
+## index.html
+
+- Imports `game.js` as `<script type="module">`
+- Renders an 18×18 grid; clicking a cell calls `makeMove()`
+- Displays current player, winner, or draw message
+- Has a "New Game" button
+
+## game.test.js
+
+- Plain Node.js — no test framework, uses `console.assert`
+- Covers: initial state, valid move, immutability, player alternation, occupied-cell rejection, win detection (all directions), draw detection
+- Exits `0` on pass, `1` on failure
+
+Run with: `node game.test.js`
 
 ## Style rules
-- Zero dependencies (no npm, no bundler)
-- ES modules only
-- Keep each file under 80 lines
+
+- No npm, no bundler, no external dependencies
+- ES modules throughout
+- Keep files around 80 lines
