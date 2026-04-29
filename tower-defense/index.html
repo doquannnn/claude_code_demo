@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>BASTION</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a1a; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="800" height="600"></canvas>
+<script>
+// ===== Layout =====
+// Play field: 0..639 x 0..599
+// Sidebar: 640..799 x 0..599
+const PLAY_W = 640, H = 600, SIDE_X = 640, SIDE_W = 160, W = 800;
+
+// ===== Path =====
+const PATH = [
+  [0,200],[160,200],[160,380],[380,380],[380,150],[560,150],[560,460],[640,460]
+];
+
+// ===== Tower Types =====
+const TOWERS = {
+  gun:    {cost:50,  range:100, dmg:1,  rate:2,   color:'#4488ff', label:'GUN    $50',  aoe:0},
+  cannon: {cost:100, range:130, dmg:5,  rate:0.5, color:'#ff4444', label:'CANNON $100', aoe:40},
+  freeze: {cost:75,  range:110, dmg:0,  rate:1,   color:'#44ccff', label:'FREEZE  $75', aoe:0, slow:true},
+};
+const TOWER_KEYS = ['gun','cannon','freeze'];
+
+// ===== Enemy Definitions =====
+const ENEMY_TYPES = {
+  grunt: {hp:3,  speed:60, reward:10, color:'#cc4444', r:10},
+  tank:  {hp:20, speed:30, reward:25, color:'#884400', r:14},
+};
+
+// ===== Waves =====
+const WAVES = [
+  // level 1
+  [{type:'grunt',count:8}],
+  [{type:'grunt',count:12}],
+  [{type:'grunt',count:5},{type:'tank',count:2}],
+  // level 2
+  [{type:'grunt',count:14}],
+  [{type:'grunt',count:8},{type:'tank',count:3}],
+  [{type:'grunt',count:6},{type:'tank',count:6}],
+];
+
+// ===== State =====
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let phase = 'menu'; // menu | playing | win | gameover
+let gold, lives, towers, enemies, waveIdx, waveActive, spawnQueue, spawnTimer, kills;
+let selectedTower = null; // 'gun'|'cannon'|'freeze'
+
+function initGame() {
+  gold = 150;
+  lives = 10;
+  towers = [];
+  enemies = [];
+  waveIdx = 0;
+  waveActive = false;
+  spawnQueue = [];
+  spawnTimer = 0;
+  kills = 0;
+  selectedTower = null;
+  phase = 'playing';
+}
+
+// ===== Path helpers =====
+function pathLen() {
+  let d = 0;
+  for (let i = 1; i < PATH.length; i++) {
+    const dx = PATH[i][0]-PATH[i-1][0], dy = PATH[i][1]-PATH[i-1][1];
+    d += Math.sqrt(dx*dx+dy*dy);
+  }
+  return d;
+}
+
+function posAlongPath(dist) {
+  let rem = dist;
+  for (let i = 1; i < PATH.length; i++) {
+    const dx = PATH[i][0]-PATH[i-1][0], dy = PATH[i][1]-PATH[i-1][1];
+    const len = Math.sqrt(dx*dx+dy*dy);
+    if (rem <= len) {
+      return { x: PATH[i-1][0] + dx*(rem/len), y: PATH[i-1][1] + dy*(rem/len) };
+    }
+    rem -= len;
+  }
+  return { x: PATH[PATH.length-1][0], y: PATH[PATH.length-1][1] };
+}
+
+const TOTAL_PATH = pathLen();
+
+function spawnEnemy(type) {
+  const def = ENEMY_TYPES[type];
+  enemies.push({
+    type, dist: 0, hp: def.hp, maxHp: def.hp,
+    speed: def.speed, reward: def.reward,
+    color: def.color, r: def.r,
+    slowTimer: 0, active: true,
+  });
+}
+
+function startWave() {
+  if (waveActive || waveIdx >= WAVES.length) return;
+  spawnQueue = [];
+  for (const group of WAVES[waveIdx]) {
+    for (let i = 0; i < group.count; i++) spawnQueue.push(group.type);
+  }
+  spawnTimer = 0;
+  waveActive = true;
+}
+
+// ===== Closest enemy in range =====
+function closestEnemy(tx, ty, range) {
+  let best = null, bestDist = Infinity;
+  for (const e of enemies) {
+    if (!e.active) continue;
+    const pos = posAlongPath(e.dist);
+    const d = Math.hypot(pos.x-tx, pos.y-ty);
+    if (d <= range && e.dist > best?.dist_along) {
+      // prefer furthest along path
+      if (!best || e.dist > best._dist) { best = e; best._dist = e.dist; bestDist = d; }
+    }
+  }
+  return best;
+}
+
+// ===== Tower placement validation =====
+function onPath(tx, ty, margin=32) {
+  for (let i = 1; i < PATH.length; i++) {
+    const ax=PATH[i-1][0], ay=PATH[i-1][1], bx=PATH[i][0], by=PATH[i][1];
+    const dx=bx-ax, dy=by-ay, len2=dx*dx+dy*dy;
+    let t = ((tx-ax)*dx + (ty-ay)*dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const nearX=ax+t*dx, nearY=ay+t*dy;
+    if (Math.hypot(tx-nearX, ty-nearY) < margin) return true;
+  }
+  return false;
+}
+
+function towerAt(tx, ty, r=20) {
+  return towers.some(t => Math.hypot(t.x-tx, t.y-ty) < r*2);
+}
+
+// ===== Update =====
+function update(dt) {
+  if (phase !== 'playing') return;
+
+  // Spawn
+  if (waveActive && spawnQueue.length > 0) {
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnEnemy(spawnQueue.shift());
+      spawnTimer = 0.7;
+    }
+  }
+  if (waveActive && spawnQueue.length === 0) {
+    // Check if wave cleared
+    if (enemies.every(e => !e.active)) {
+      waveActive = false;
+      waveIdx++;
+      if (waveIdx >= WAVES.length) { phase = 'win'; return; }
+    }
+  }
+
+  // Move enemies
+  for (const e of enemies) {
+    if (!e.active) continue;
+    const spd = e.slowTimer > 0 ? e.speed * 0.5 : e.speed;
+    e.dist += spd * dt;
+    if (e.slowTimer > 0) e.slowTimer -= dt;
+    if (e.dist >= TOTAL_PATH) {
+      e.active = false;
+      lives--;
+      if (lives <= 0) { phase = 'gameover'; return; }
+    }
+  }
+
+  // Tower fire
+  for (const t of towers) {
+    t.timer -= dt;
+    if (t.timer > 0) continue;
+    const def = TOWERS[t.type];
+    const target = closestEnemy(t.x, t.y, def.range);
+    if (!target) continue;
+    t.timer = 1 / def.rate;
+    t.flashTimer = 0.12;
+
+    if (def.slow) {
+      // Freeze: slow all in range
+      for (const e of enemies) {
+        if (!e.active) continue;
+        const pos = posAlongPath(e.dist);
+        if (Math.hypot(pos.x-t.x, pos.y-t.y) <= def.range) e.slowTimer = 2;
+      }
+    } else if (def.aoe > 0) {
+      // Cannon AoE
+      const tpos = posAlongPath(target.dist);
+      for (const e of enemies) {
+        if (!e.active) continue;
+        const pos = posAlongPath(e.dist);
+        if (Math.hypot(pos.x-tpos.x, pos.y-tpos.y) <= def.aoe) {
+          e.hp -= def.dmg;
+          if (e.hp <= 0) { e.active = false; gold += e.reward; kills++; }
+        }
+      }
+    } else {
+      // Gun: single target
+      target.hp -= def.dmg;
+      if (target.hp <= 0) { target.active = false; gold += target.reward; kills++; }
+    }
+  }
+
+  // Decrement flash
+  for (const t of towers) if (t.flashTimer > 0) t.flashTimer -= dt;
+}
+
+// ===== Input =====
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+  if (phase === 'menu') {
+    // START button at (300, 315, 200, 50) → center (400, 340)
+    if (mx>=300 && mx<=500 && my>=315 && my<=365) initGame();
+    return;
+  }
+
+  if (phase === 'win' || phase === 'gameover') {
+    if (mx>=300 && mx<=500 && my>=315 && my<=365) { phase='menu'; }
+    return;
+  }
+
+  if (phase === 'playing') {
+    // Sidebar buttons
+    if (mx >= SIDE_X) {
+      const rx = mx - SIDE_X;
+      // GUN: (8, 130, 144, 40) on sidebar → canvas (648, 130, 144, 40)
+      // CANNON: (8, 180, 144, 40)
+      // FREEZE: (8, 230, 144, 40)
+      // NEXT WAVE: (8, 380, 144, 40)
+      if (my>=130 && my<=170) { selectedTower = selectedTower==='gun' ? null : 'gun'; return; }
+      if (my>=180 && my<=220) { selectedTower = selectedTower==='cannon' ? null : 'cannon'; return; }
+      if (my>=230 && my<=270) { selectedTower = selectedTower==='freeze' ? null : 'freeze'; return; }
+      if (my>=420 && my<=460) { startWave(); return; }
+      return;
+    }
+
+    // Place tower on play field
+    if (selectedTower && mx < PLAY_W) {
+      const def = TOWERS[selectedTower];
+      if (gold < def.cost) return;
+      if (onPath(mx, my) || towerAt(mx, my)) return;
+      towers.push({ type: selectedTower, x: mx, y: my, timer: 0, flashTimer: 0 });
+      gold -= def.cost;
+      selectedTower = null;
+    }
+  }
+});
+
+// ===== Render =====
+function drawPath() {
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 36;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(PATH[0][0], PATH[0][1]);
+  for (let i = 1; i < PATH.length; i++) ctx.lineTo(PATH[i][0], PATH[i][1]);
+  ctx.stroke();
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 8]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawSidebar() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(SIDE_X, 0, SIDE_W, H);
+  ctx.fillStyle = '#2a2a4e';
+  ctx.fillRect(SIDE_X, 0, SIDE_W, H);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('TOWERS', SIDE_X + SIDE_W/2, 30);
+
+  // Tower buttons: at canvas y 130, 180, 230
+  const btnDefs = [
+    {key:'gun', y:130},
+    {key:'cannon', y:180},
+    {key:'freeze', y:230},
+  ];
+  for (const {key, y} of btnDefs) {
+    const def = TOWERS[key];
+    const sel = selectedTower === key;
+    ctx.fillStyle = sel ? def.color : '#333';
+    ctx.fillRect(SIDE_X+8, y, 144, 40);
+    if (sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(SIDE_X+8, y, 144, 40); }
+    ctx.fillStyle = gold >= def.cost ? '#fff' : '#666';
+    ctx.font = '13px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(def.label, SIDE_X+14, y+16);
+    // Color swatch
+    ctx.fillStyle = def.color;
+    ctx.fillRect(SIDE_X+14, y+22, 12, 12);
+  }
+
+  // Stats
+  ctx.fillStyle = '#fff';
+  ctx.font = '15px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Gold: $${gold}`, SIDE_X+10, 310);
+  ctx.fillText(`Lives: ${lives}`, SIDE_X+10, 335);
+  ctx.fillText(`Wave: ${waveIdx+1}/${WAVES.length}`, SIDE_X+10, 360);
+  ctx.fillText(`Kills: ${kills}`, SIDE_X+10, 385);
+
+  // Next Wave button at y=420
+  const canStart = !waveActive && waveIdx < WAVES.length;
+  ctx.fillStyle = canStart ? '#228B22' : '#444';
+  ctx.fillRect(SIDE_X+8, 420, 144, 40);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(waveActive ? 'WAVE ON' : 'NEXT WAVE', SIDE_X+SIDE_W/2, 445);
+}
+
+function render() {
+  ctx.fillStyle = '#0a1a0a';
+  ctx.fillRect(0, 0, W, H);
+
+  if (phase === 'menu') {
+    ctx.fillStyle = '#0a1a0a';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 88px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('BASTION', W/2, 180);
+    ctx.font = '24px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Defend your base!', W/2, 235);
+    ctx.fillText('Place towers • Start waves • Survive', W/2, 270);
+    // START at (300, 315, 200, 50) → center (400, 340)
+    ctx.fillStyle = '#228B22';
+    ctx.fillRect(300, 315, 200, 50);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px monospace';
+    ctx.fillText('START', W/2, 350);
+    return;
+  }
+
+  if (phase === 'playing' || phase === 'win' || phase === 'gameover') {
+    // Play field bg
+    ctx.fillStyle = '#1a2a1a';
+    ctx.fillRect(0, 0, PLAY_W, H);
+
+    drawPath();
+
+    // Towers
+    for (const t of towers) {
+      const def = TOWERS[t.type];
+      const flash = t.flashTimer > 0;
+      ctx.fillStyle = flash ? '#fff' : def.color;
+      ctx.fillRect(t.x-15, t.y-15, 30, 30);
+      // Range ring on selected type hover
+      if (selectedTower === t.type) {
+        ctx.strokeStyle = def.color + '44';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(t.x, t.y, def.range, 0, Math.PI*2); ctx.stroke();
+      }
+      // Type label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.type[0].toUpperCase(), t.x, t.y+5);
+    }
+
+    // Enemies
+    for (const e of enemies) {
+      if (!e.active) continue;
+      const pos = posAlongPath(e.dist);
+      const isSlow = e.slowTimer > 0;
+      ctx.fillStyle = isSlow ? '#88aaff' : e.color;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, e.r, 0, Math.PI*2);
+      ctx.fill();
+      // HP bar
+      const hpFrac = e.hp / e.maxHp;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(pos.x-e.r, pos.y-e.r-8, e.r*2, 5);
+      ctx.fillStyle = hpFrac > 0.5 ? '#4c4' : hpFrac > 0.25 ? '#ee4' : '#c44';
+      ctx.fillRect(pos.x-e.r, pos.y-e.r-8, e.r*2*hpFrac, 5);
+    }
+
+    // Range preview if tower selected
+    if (selectedTower) {
+      const def = TOWERS[selectedTower];
+      ctx.strokeStyle = def.color + '88';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4,4]);
+      // Draw small cursor indicator (mouse position tracked separately — just show at sidebar top)
+      ctx.setLineDash([]);
+    }
+
+    drawSidebar();
+  }
+
+  if (phase === 'win') {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#44ee44';
+    ctx.font = 'bold 80px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('VICTORY!', W/2, 230);
+    ctx.font = '26px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(`Kills: ${kills}  Gold: $${gold}`, W/2, 285);
+    ctx.fillStyle = '#228B22';
+    ctx.fillRect(300, 315, 200, 50);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText('Play Again', W/2, 348);
+    return;
+  }
+
+  if (phase === 'gameover') {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 72px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', W/2, 230);
+    ctx.font = '26px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(`Wave ${waveIdx+1}  Kills: ${kills}`, W/2, 285);
+    ctx.fillStyle = '#884400';
+    ctx.fillRect(300, 315, 200, 50);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText('Try Again', W/2, 348);
+  }
+}
+
+// ===== Loop =====
+let last = 0;
+function loop(ts) {
+  const dt = Math.min((ts - last) / 1000, 0.05);
+  last = ts;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
