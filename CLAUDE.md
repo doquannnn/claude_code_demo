@@ -44,3 +44,8 @@ Run with: `node game.test.js`
 - No npm, no bundler, no external dependencies
 - ES modules throughout
 - Keep files around 80 lines
+
+## CI/CD
+
+- CI runs `node game.test.js` on every push and pull request via GitHub Actions
+- CD deploys to GitHub Pages on every push to `main`
