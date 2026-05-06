@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>JUMPER</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="640" height="360"></canvas>
+<script>
+// ===== Constants =====
+const W = 640, H = 360;
+const GRAV = 900;       // px/s^2
+const JUMP_V = -420;    // px/s
+const SPD = 200;        // px/s
+const PW = 24, PH = 32; // player size
+const EW = 24, EH = 24; // enemy size
+const CW = 16, CH = 16; // coin size
+
+// ===== Level data =====
+// World is 1600px wide; camera scrolls to follow player
+const LEVELS = [
+  {
+    platforms: [
+      {x:0,   y:320, w:1600, h:40},
+      {x:200, y:250, w:120,  h:16},
+      {x:420, y:200, w:120,  h:16},
+      {x:650, y:260, w:120,  h:16},
+      {x:850, y:210, w:100,  h:16},
+      {x:1050,y:270, w:120,  h:16},
+      {x:1250,y:230, w:140,  h:16},
+    ],
+    coins: [{x:255,y:218},{x:480,y:168},{x:710,y:228},{x:910,y:178},{x:1310,y:198}],
+    enemies: [{x:300,y:298,dir:1},{x:700,y:298,dir:-1}],
+    playerStart: {x:60, y:280},
+    exit: {x:1520, y:272},
+  },
+  {
+    platforms: [
+      {x:0,   y:320, w:400,  h:40},
+      {x:450, y:280, w:80,   h:16},
+      {x:580, y:240, w:80,   h:16},
+      {x:710, y:200, w:80,   h:16},
+      {x:840, y:240, w:80,   h:16},
+      {x:970, y:280, w:80,   h:16},
+      {x:1080,y:320, w:520,  h:40},
+    ],
+    coins: [{x:475,y:248},{x:605,y:208},{x:735,y:168},{x:865,y:208},{x:995,y:248},{x:1300,y:288}],
+    enemies: [{x:150,y:288,dir:1},{x:1200,y:288,dir:-1},{x:500,y:248,dir:1}],
+    playerStart: {x:60, y:280},
+    exit: {x:1500, y:272},
+  },
+  {
+    platforms: [
+      {x:0,   y:320, w:300,  h:40},
+      {x:350, y:260, w:100,  h:16},
+      {x:500, y:200, w:100,  h:16},
+      {x:660, y:260, w:80,   h:16},
+      {x:790, y:200, w:80,   h:16},
+      {x:920, y:150, w:80,   h:16},
+      {x:1060,y:200, w:80,   h:16},
+      {x:1190,y:260, w:80,   h:16},
+      {x:1320,y:320, w:280,  h:40},
+    ],
+    coins: [{x:390,y:228},{x:540,y:168},{x:700,y:228},{x:830,y:168},{x:960,y:118},{x:1100,y:168},{x:1230,y:228},{x:1400,y:288}],
+    enemies: [{x:100,y:288,dir:1},{x:650,y:228,dir:1},{x:850,y:168,dir:-1},{x:1380,y:288,dir:1}],
+    playerStart: {x:60, y:280},
+    exit: {x:1490, y:272},
+  },
+];
+
+// ===== State =====
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let scene = 'menu'; // menu | playing | levelComplete | gameover | win
+let lvl = 0, lives = 3, score = 0;
+let player, enemies, coins, cam, coinTotal, coinDone, hasExit;
+
+function startLevel(idx) {
+  const L = LEVELS[idx];
+  player = {
+    x: L.playerStart.x, y: L.playerStart.y,
+    vx: 0, vy: 0, onGround: false,
+    jumps: 2, // double jump allowed
+    w: PW, h: PH,
+    invTimer: 0, // invincibility frames after hit
+  };
+  enemies = L.enemies.map(e => ({...e, vx: e.dir*90, w:EW, h:EH, active:true}));
+  coins = L.coins.map(c => ({...c, w:CW, h:CH, collected:false}));
+  cam = {x: 0};
+  coinTotal = coins.length;
+  coinDone = 0;
+  hasExit = false;
+  scene = 'playing';
+}
+
+// ===== Input =====
+const keys = {};
+document.addEventListener('keydown', e => { keys[e.code] = true; onKey(e.code); });
+document.addEventListener('keyup',   e => { keys[e.code] = false; });
+
+function onKey(code) {
+  if (scene === 'playing') {
+    if ((code === 'Space' || code === 'ArrowUp' || code === 'KeyW') && player.jumps > 0) {
+      player.vy = JUMP_V;
+      player.jumps--;
+      player.onGround = false;
+    }
+  }
+}
+
+let mouseBtn = {x:0, y:0};
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  if (scene === 'menu') {
+    // PLAY button: center (320, 220) = (width/2, height/2+40)
+    if (mx >= 220 && mx <= 420 && my >= 195 && my <= 245) { lvl=0; lives=3; score=0; startLevel(0); }
+  } else if (scene === 'levelComplete') {
+    if (mx >= 220 && mx <= 420 && my >= 195 && my <= 245) {
+      lvl++;
+      if (lvl >= LEVELS.length) scene = 'win';
+      else startLevel(lvl);
+    }
+  } else if (scene === 'gameover' || scene === 'win') {
+    if (mx >= 220 && mx <= 420 && my >= 195 && my <= 245) { lvl=0; lives=3; score=0; startLevel(0); }
+  }
+});
+
+// ===== Physics helpers =====
+function aabb(ax,ay,aw,ah, bx,by,bw,bh) {
+  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+}
+
+function resolveY(entity, plats) {
+  for (const p of plats) {
+    if (aabb(entity.x, entity.y, entity.w, entity.h, p.x, p.y, p.w, p.h)) {
+      if (entity.vy >= 0) {
+        entity.y = p.y - entity.h;
+        entity.vy = 0;
+        entity.onGround = true;
+        if (entity === player) player.jumps = 2;
+      } else {
+        entity.y = p.y + p.h;
+        entity.vy = 0;
+      }
+    }
+  }
+}
+
+// ===== Update =====
+function update(dt) {
+  if (scene !== 'playing') return;
+  const L = LEVELS[lvl];
+
+  // Player move
+  player.vx = 0;
+  if (keys['ArrowLeft']  || keys['KeyA']) player.vx = -SPD;
+  if (keys['ArrowRight'] || keys['KeyD']) player.vx =  SPD;
+
+  player.vy += GRAV * dt;
+  player.x += player.vx * dt;
+  // Clamp x to world
+  player.x = Math.max(0, Math.min(1600 - player.w, player.x));
+  player.onGround = false;
+  player.y += player.vy * dt;
+  resolveY(player, L.platforms);
+
+  // Invincibility timer
+  if (player.invTimer > 0) player.invTimer -= dt;
+
+  // Enemies
+  for (const e of enemies) {
+    if (!e.active) continue;
+    e.x += e.vx * dt;
+    // Bounce off world edges or if off platform
+    const onEdge = e.x <= 0 || e.x + e.w >= 1600;
+    if (onEdge) { e.vx *= -1; }
+    // Reverse at platform edge (simple: stay on platform it was spawned on)
+    // Keep enemy on ground
+    e.y += GRAV * dt * 0.5; // simplified gravity
+    e.onGround = false;
+    resolveY(e, L.platforms);
+    // If enemy falls off, remove
+    if (e.y > 400) e.active = false;
+  }
+
+  // Coins
+  for (const c of coins) {
+    if (c.collected) continue;
+    if (aabb(player.x, player.y, player.w, player.h, c.x, c.y, c.w, c.h)) {
+      c.collected = true;
+      coinDone++;
+      score += 10;
+      if (coinDone >= coinTotal) hasExit = true;
+    }
+  }
+
+  // Exit
+  const ex = L.exit;
+  if (hasExit && aabb(player.x, player.y, player.w, player.h, ex.x, ex.y, 20, 48)) {
+    scene = 'levelComplete';
+    return;
+  }
+
+  // Enemy collision
+  if (player.invTimer <= 0) {
+    for (const e of enemies) {
+      if (!e.active) continue;
+      if (aabb(player.x, player.y, player.w, player.h, e.x, e.y, e.w, e.h)) {
+        lives--;
+        player.invTimer = 2.0;
+        player.vy = -300;
+        if (lives <= 0) { scene = 'gameover'; return; }
+      }
+    }
+  }
+
+  // Camera follows player
+  cam.x = player.x - W / 2 + player.w / 2;
+  cam.x = Math.max(0, Math.min(1600 - W, cam.x));
+
+  // Fall off world
+  if (player.y > 500) {
+    lives--;
+    if (lives <= 0) { scene = 'gameover'; }
+    else { startLevel(lvl); }
+  }
+}
+
+// ===== Render =====
+function drawBtn(label, y) {
+  ctx.fillStyle = '#4488ff';
+  ctx.fillRect(220, y, 200, 50);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 26px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, 320, y + 33);
+}
+
+function render() {
+  ctx.fillStyle = '#87CEEB';
+  ctx.fillRect(0, 0, W, H);
+
+  if (scene === 'menu') {
+    ctx.fillStyle = '#111d';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 80px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('JUMPER', W/2, 120);
+    ctx.font = '22px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Collect coins · Reach the exit', W/2, 165);
+    // PLAY button center at (320, 220) = (W/2, H/2+40)
+    drawBtn('PLAY', 195);
+    return;
+  }
+
+  if (scene === 'playing' || scene === 'levelComplete') {
+    const L = LEVELS[lvl];
+    const cx = cam.x;
+
+    // sky
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#5ba8f5');
+    grad.addColorStop(1, '#87CEEB');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Platforms
+    for (const p of L.platforms) {
+      const px = p.x - cx;
+      if (px + p.w < 0 || px > W) continue;
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(px, p.y, p.w, p.h);
+      ctx.fillStyle = '#228B22';
+      ctx.fillRect(px, p.y, p.w, 8);
+    }
+
+    // Coins
+    for (const c of coins) {
+      if (c.collected) continue;
+      const cx2 = c.x - cx + c.w/2;
+      const cy2 = c.y + c.h/2;
+      if (cx2 < -20 || cx2 > W+20) continue;
+      ctx.beginPath();
+      ctx.arc(cx2, cy2, c.w/2, 0, Math.PI*2);
+      ctx.fillStyle = '#ffdd00';
+      ctx.fill();
+      ctx.fillStyle = '#cc9900';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('$', cx2, cy2 + 4);
+    }
+
+    // Exit door
+    const ex = L.exit;
+    const exScreenX = ex.x - cx;
+    if (exScreenX > -30 && exScreenX < W+30) {
+      ctx.fillStyle = hasExit ? '#00cc44' : '#555';
+      ctx.fillRect(exScreenX, ex.y, 20, 48);
+      ctx.fillStyle = hasExit ? '#00ff66' : '#333';
+      ctx.beginPath();
+      ctx.arc(exScreenX + 10, ex.y, 10, Math.PI, 0);
+      ctx.fill();
+    }
+
+    // Enemies
+    for (const e of enemies) {
+      if (!e.active) continue;
+      const ex2 = e.x - cx;
+      if (ex2 < -40 || ex2 > W+40) continue;
+      ctx.fillStyle = '#cc3333';
+      ctx.fillRect(ex2, e.y, e.w, e.h);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(ex2+4, e.y+5, 5, 5);
+      ctx.fillRect(ex2+e.w-9, e.y+5, 5, 5);
+    }
+
+    // Player
+    const px2 = player.x - cx;
+    ctx.fillStyle = player.invTimer > 0 && Math.floor(player.invTimer*8)%2 ? '#aad' : '#4488ff';
+    ctx.fillRect(px2, player.y, player.w, player.h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(px2+4, player.y+7, 6, 6);
+    ctx.fillRect(px2+14, player.y+7, 6, 6);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(px2+6, player.y+9, 3, 3);
+    ctx.fillRect(px2+16, player.y+9, 3, 3);
+
+    // HUD
+    ctx.fillStyle = '#0008';
+    ctx.fillRect(0, 0, W, 36);
+    ctx.fillStyle = '#fff';
+    ctx.font = '18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`❤ ${lives}  Coins: ${coinDone}/${coinTotal}  Score: ${score}`, 12, 24);
+    ctx.textAlign = 'right';
+    ctx.fillText(`Level ${lvl+1}`, W-12, 24);
+
+    if (scene === 'levelComplete') {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#44ee44';
+      ctx.font = 'bold 52px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Level Complete!', W/2, 160);
+      const isLast = lvl >= LEVELS.length - 1;
+      drawBtn(isLast ? 'FINISH' : 'Next Level', 195);
+    }
+    return;
+  }
+
+  if (scene === 'gameover') {
+    ctx.fillStyle = '#111d';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 72px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', W/2, 140);
+    ctx.font = '26px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(`Score: ${score}`, W/2, 185);
+    drawBtn('Play Again', 195);
+    return;
+  }
+
+  if (scene === 'win') {
+    ctx.fillStyle = '#111d';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#44ee44';
+    ctx.font = 'bold 72px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('VICTORY!', W/2, 130);
+    ctx.font = '26px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(`Final Score: ${score}`, W/2, 178);
+    drawBtn('Play Again', 195);
+  }
+}
+
+// ===== Loop =====
+let last = 0;
+function loop(ts) {
+  const dt = Math.min((ts - last) / 1000, 0.05);
+  last = ts;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
