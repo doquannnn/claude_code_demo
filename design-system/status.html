@@ -1,0 +1,27 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Status message — states</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <style>
+      /* Mirror of #status in ../style.css */
+      .status {
+        font-size: var(--fs-md);
+        margin: var(--space-3) 0;
+        min-height: 1.5rem;
+      }
+      .status b[data-player="X"] { color: var(--color-player-x); }
+      .status b[data-player="O"] { color: var(--color-player-o); }
+    </style>
+  </head>
+  <body class="ds-card">
+    <h2>Status message — states</h2>
+    <div class="status">Player <b data-player="X">X</b>'s turn</div>
+    <div class="status">AI is thinking…</div>
+    <div class="status">Player <b data-player="O">O</b> wins!</div>
+    <div class="status">It's a draw!</div>
+  </body>
+</html>

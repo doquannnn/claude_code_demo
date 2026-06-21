@@ -1,0 +1,94 @@
+/* ============================================================
+   Gomoku Design System — Component styles
+   The real, reusable class vocabulary the design agent composes with.
+   Token-driven; every value resolves to a var(--*) from tokens.css.
+   Imported into styles.css so rendered designs receive it.
+   ============================================================ */
+
+/* ---- Surface / page ------------------------------------------------ */
+.gomoku {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-on-bg);
+}
+
+/* ---- Button -------------------------------------------------------- */
+/* Generalized from #new-game in the product's style.css. */
+.btn {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  background: var(--color-ink);
+  color: var(--color-on-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.btn:hover,
+.btn--hover {
+  box-shadow: var(--shadow-2);
+}
+.btn:active,
+.btn--active {
+  transform: translateY(1px);
+}
+
+/* ---- Board cell ---------------------------------------------------- */
+/* Mirrors .cell in the product's style.css. */
+.cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  background: var(--color-surface);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+}
+.cell:hover:not([data-taken]),
+.cell--hover {
+  background: var(--color-surface-hover);
+}
+.cell[data-taken] {
+  cursor: default;
+}
+.cell[data-player="X"] {
+  color: var(--color-player-x);
+}
+.cell[data-player="O"] {
+  color: var(--color-player-o);
+}
+.cell--win {
+  background: var(--color-win);
+}
+
+/* ---- Board grid ---------------------------------------------------- */
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--board-cols), var(--cell-size));
+  grid-template-rows: repeat(var(--board-cols), var(--cell-size));
+  gap: var(--grid-gap);
+  box-shadow: var(--shadow-2);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Status message ------------------------------------------------ */
+/* Mirrors #status in the product's style.css. */
+.status {
+  font-size: var(--fs-md);
+  margin: var(--space-3) 0;
+  min-height: 1.5rem;
+}
+.status b[data-player="X"] {
+  color: var(--color-player-x);
+}
+.status b[data-player="O"] {
+  color: var(--color-player-o);
+}

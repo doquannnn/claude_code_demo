@@ -1,0 +1,102 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Foundations — Tokens</title>
+    <style>
+      :root {
+        --color-bg: #5a9e8a;
+        --color-surface: #ffffff;
+        --color-surface-hover: #e8f5f1;
+        --color-ink: #1a1a1a;
+        --color-on-bg: #ffffff;
+        --color-player-x: #d64545;
+        --color-player-o: #2f6fb3;
+        --color-win: #f4c430;
+        --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+        --fs-sm: 1rem;
+        --fs-md: 1.2rem;
+        --fs-lg: 2rem;
+        --fw-bold: 700;
+        --tracking-wide: 0.05em;
+        --space-1: 0.25rem;
+        --space-2: 0.5rem;
+        --space-3: 1rem;
+        --space-4: 1.5rem;
+        --space-6: 2rem;
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.2);
+        --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.25);
+      }
+      .ds-card {
+        font-family: var(--font-sans);
+        background: var(--color-bg);
+        color: var(--color-on-bg);
+        padding: var(--space-6);
+        min-height: 100%;
+        box-sizing: border-box;
+        margin: 0;
+      }
+      .ds-card h2 {
+        margin: 0 0 var(--space-4);
+        font-size: var(--fs-md);
+        letter-spacing: var(--tracking-wide);
+      }
+      .ds-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+      .ds-label { font-size: 0.8rem; opacity: 0.85; margin-top: var(--space-1); }
+      .swatch { display: flex; flex-direction: column; align-items: center; width: 88px; }
+      .swatch .chip {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-1);
+        border: 1px solid rgba(0, 0, 0, 0.15);
+      }
+      .type-sm { font-size: var(--fs-sm); }
+      .type-md { font-size: var(--fs-md); }
+      .type-lg { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+      .space-demo { background: var(--color-surface); border-radius: var(--radius-sm); }
+      .space-demo span {
+        display: inline-block;
+        background: var(--color-player-o);
+        height: 16px;
+        vertical-align: middle;
+      }
+      section { margin-bottom: var(--space-6); }
+    </style>
+  </head>
+  <body class="ds-card">
+    <section>
+      <h2>Color palette</h2>
+      <div class="ds-row">
+        <div class="swatch"><div class="chip" style="background: var(--color-bg)"></div><span class="ds-label">bg</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-surface)"></div><span class="ds-label">surface</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-ink)"></div><span class="ds-label">ink</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-player-x)"></div><span class="ds-label">player X</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-player-o)"></div><span class="ds-label">player O</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-win)"></div><span class="ds-label">win</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Typography</h2>
+      <div class="type-lg">Gomoku Heading — fs-lg</div>
+      <div class="type-md">Status text — fs-md</div>
+      <div class="type-sm">Body / control text — fs-sm</div>
+    </section>
+
+    <section>
+      <h2>Spacing scale (4px base)</h2>
+      <div class="space-demo ds-row" style="padding: var(--space-2)">
+        <div><span style="width: var(--space-1)"></span><div class="ds-label">1</div></div>
+        <div><span style="width: var(--space-2)"></span><div class="ds-label">2</div></div>
+        <div><span style="width: var(--space-3)"></span><div class="ds-label">3</div></div>
+        <div><span style="width: var(--space-4)"></span><div class="ds-label">4</div></div>
+        <div><span style="width: var(--space-6)"></span><div class="ds-label">6</div></div>
+      </div>
+    </section>
+  </body>
+</html>

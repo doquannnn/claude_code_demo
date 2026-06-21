@@ -1,0 +1,67 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Foundations — Tokens</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <style>
+      .swatch {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 88px;
+      }
+      .swatch .chip {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-1);
+        border: 1px solid rgba(0, 0, 0, 0.15);
+      }
+      .type-sm { font-size: var(--fs-sm); }
+      .type-md { font-size: var(--fs-md); }
+      .type-lg { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+      .space-demo { background: var(--color-surface); border-radius: var(--radius-sm); }
+      .space-demo span {
+        display: inline-block;
+        background: var(--color-player-o);
+        height: 16px;
+        vertical-align: middle;
+      }
+      section { margin-bottom: var(--space-6); }
+    </style>
+  </head>
+  <body class="ds-card">
+    <section>
+      <h2>Color palette</h2>
+      <div class="ds-row">
+        <div class="swatch"><div class="chip" style="background: var(--color-bg)"></div><span class="ds-label">bg</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-surface)"></div><span class="ds-label">surface</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-ink)"></div><span class="ds-label">ink</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-player-x)"></div><span class="ds-label">player X</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-player-o)"></div><span class="ds-label">player O</span></div>
+        <div class="swatch"><div class="chip" style="background: var(--color-win)"></div><span class="ds-label">win</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Typography</h2>
+      <div class="type-lg">Gomoku Heading — fs-lg</div>
+      <div class="type-md">Status text — fs-md</div>
+      <div class="type-sm">Body / control text — fs-sm</div>
+    </section>
+
+    <section>
+      <h2>Spacing scale (4px base)</h2>
+      <div class="space-demo ds-row" style="padding: var(--space-2)">
+        <div><span style="width: var(--space-1)"></span><div class="ds-label">1</div></div>
+        <div><span style="width: var(--space-2)"></span><div class="ds-label">2</div></div>
+        <div><span style="width: var(--space-3)"></span><div class="ds-label">3</div></div>
+        <div><span style="width: var(--space-4)"></span><div class="ds-label">4</div></div>
+        <div><span style="width: var(--space-6)"></span><div class="ds-label">6</div></div>
+      </div>
+    </section>
+  </body>
+</html>
