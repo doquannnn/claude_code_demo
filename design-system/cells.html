@@ -1,0 +1,45 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Board Cell — states</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <style>
+      /* Mirror of .cell in ../style.css */
+      .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        background: var(--color-surface);
+        border: 2px solid var(--color-ink);
+        border-radius: var(--radius-sm);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-bold);
+        cursor: pointer;
+        color: var(--color-ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--transition);
+      }
+      .cell--hover { background: var(--color-surface-hover); }
+      .cell[data-taken] { cursor: default; }
+      .cell[data-player="X"] { color: var(--color-player-x); }
+      .cell[data-player="O"] { color: var(--color-player-o); }
+      .cell--win { background: var(--color-win); }
+
+      .cellbox { display: flex; flex-direction: column; align-items: center; }
+    </style>
+  </head>
+  <body class="ds-card">
+    <h2>Board cell — states</h2>
+    <div class="ds-row">
+      <div class="cellbox"><div class="cell"></div><span class="ds-label">empty</span></div>
+      <div class="cellbox"><div class="cell cell--hover"></div><span class="ds-label">hover</span></div>
+      <div class="cellbox"><div class="cell" data-taken data-player="X">X</div><span class="ds-label">player X</span></div>
+      <div class="cellbox"><div class="cell" data-taken data-player="O">O</div><span class="ds-label">player O</span></div>
+      <div class="cellbox"><div class="cell cell--win" data-taken data-player="X">X</div><span class="ds-label">winning</span></div>
+    </div>
+  </body>
+</html>

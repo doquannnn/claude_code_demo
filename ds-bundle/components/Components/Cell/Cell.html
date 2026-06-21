@@ -1,0 +1,82 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Board Cell — states</title>
+    <style>
+      :root {
+        --color-bg: #5a9e8a;
+        --color-surface: #ffffff;
+        --color-surface-hover: #e8f5f1;
+        --color-ink: #1a1a1a;
+        --color-on-bg: #ffffff;
+        --color-player-x: #d64545;
+        --color-player-o: #2f6fb3;
+        --color-win: #f4c430;
+        --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+        --fs-sm: 1rem;
+        --fs-md: 1.2rem;
+        --fw-bold: 700;
+        --tracking-wide: 0.05em;
+        --space-1: 0.25rem;
+        --space-4: 1.5rem;
+        --space-6: 2rem;
+        --radius-sm: 4px;
+        --cell-size: 38px;
+        --transition: 150ms ease;
+      }
+      .ds-card {
+        font-family: var(--font-sans);
+        background: var(--color-bg);
+        color: var(--color-on-bg);
+        padding: var(--space-6);
+        min-height: 100%;
+        box-sizing: border-box;
+        margin: 0;
+      }
+      .ds-card h2 {
+        margin: 0 0 var(--space-4);
+        font-size: var(--fs-md);
+        letter-spacing: var(--tracking-wide);
+      }
+      .ds-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+      .ds-label { font-size: 0.8rem; opacity: 0.85; margin-top: var(--space-1); }
+
+      /* Component under test: .cell */
+      .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        background: var(--color-surface);
+        border: 2px solid var(--color-ink);
+        border-radius: var(--radius-sm);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-bold);
+        cursor: pointer;
+        color: var(--color-ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--transition);
+      }
+      .cell--hover { background: var(--color-surface-hover); }
+      .cell[data-taken] { cursor: default; }
+      .cell[data-player="X"] { color: var(--color-player-x); }
+      .cell[data-player="O"] { color: var(--color-player-o); }
+      .cell--win { background: var(--color-win); }
+
+      .cellbox { display: flex; flex-direction: column; align-items: center; }
+    </style>
+  </head>
+  <body class="ds-card">
+    <h2>Board cell — states</h2>
+    <div class="ds-row">
+      <div class="cellbox"><div class="cell"></div><span class="ds-label">empty</span></div>
+      <div class="cellbox"><div class="cell cell--hover"></div><span class="ds-label">hover</span></div>
+      <div class="cellbox"><div class="cell" data-taken data-player="X">X</div><span class="ds-label">player X</span></div>
+      <div class="cellbox"><div class="cell" data-taken data-player="O">O</div><span class="ds-label">player O</span></div>
+      <div class="cellbox"><div class="cell cell--win" data-taken data-player="X">X</div><span class="ds-label">winning</span></div>
+    </div>
+  </body>
+</html>

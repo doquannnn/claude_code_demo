@@ -1,0 +1,5 @@
+{
+  "projectId": "4b3a19ca-4e69-48e8-8800-0685cbfa5554",
+  "shape": "offscript",
+  "note": "Off-script CSS/token design system (no React build, no Storybook). Layout hand-built from design-system/ HTML cards + tokens.css. See .design-sync/NOTES.md."
+}

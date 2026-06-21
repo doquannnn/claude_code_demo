@@ -1,0 +1,46 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Button — New Game</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <style>
+      /* Mirror of #new-game in ../style.css, as a reusable .btn */
+      .btn {
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-bold);
+        cursor: pointer;
+        background: var(--color-ink);
+        color: var(--color-on-bg);
+        border: none;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-1);
+        transition: transform var(--transition), box-shadow var(--transition);
+      }
+      .btn:hover { box-shadow: var(--shadow-2); }
+      .btn:active { transform: translateY(1px); }
+      .btn--hover { box-shadow: var(--shadow-2); }
+      .btn--active { transform: translateY(1px); }
+    </style>
+  </head>
+  <body class="ds-card">
+    <h2>Button — New Game</h2>
+    <div class="ds-row">
+      <div>
+        <button class="btn">New Game</button>
+        <div class="ds-label">default</div>
+      </div>
+      <div>
+        <button class="btn btn--hover">New Game</button>
+        <div class="ds-label">hover</div>
+      </div>
+      <div>
+        <button class="btn btn--active">New Game</button>
+        <div class="ds-label">active</div>
+      </div>
+    </div>
+  </body>
+</html>

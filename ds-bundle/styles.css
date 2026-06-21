@@ -1,0 +1,8 @@
+/* ============================================================
+   Gomoku Design System — styling entry point
+   Rendered designs receive ONLY this file's transitive @import
+   closure, so everything the agent's designs need is reachable here:
+   the tokens, then the component classes.
+   ============================================================ */
+@import "./tokens/tokens.css";
+@import "./_ds_bundle.css";

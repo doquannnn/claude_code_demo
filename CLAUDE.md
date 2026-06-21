@@ -9,6 +9,8 @@ Browser-based 18×18 Gomoku game — first to 5 in a row wins. Zero dependencies
 | `game.js`       | Game logic                     |
 | `index.html`    | UI                             |
 | `game.test.js`  | Tests (plain Node.js)          |
+| `style.css`     | UI styles + `:root` tokens     |
+| `design-system/`| Component library for `/design-sync` |
 
 ## game.js exports
 
@@ -44,6 +46,14 @@ Run with: `node game.test.js`
 - No npm, no bundler, no external dependencies
 - ES modules throughout
 - Keep files around 80 lines
+
+## design-system/
+
+- Local component library synced to a claude.ai/design project via `/design-sync`
+- Each preview is a standalone HTML file; **first line** is a `<!-- @dsCard group="..." -->` marker
+- `tokens.css` holds shared `:root` tokens, mirroring `style.css`
+- Cards: `tokens.html` (Foundations), `buttons.html` / `cells.html` / `status.html` (Components)
+- See `design-system/README.md` for the full table
 
 ## CI/CD
 
