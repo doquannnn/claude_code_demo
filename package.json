@@ -1,0 +1,27 @@
+{
+  "name": "claude_code_demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "game.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:cli": "bash tests/cli/gomoku-cli-tests.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/doquannnn/claude_code_demo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/doquannnn/claude_code_demo/issues"
+  },
+  "homepage": "https://github.com/doquannnn/claude_code_demo#readme",
+  "devDependencies": {
+    "@playwright/cli": "^0.1.13",
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.7.0"
+  }
+}

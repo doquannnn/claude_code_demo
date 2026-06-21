@@ -43,3 +43,22 @@ logs/
 *.swp
 *.swo
 *~
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/.playwright-cli/
+
+# Local debug screenshots
+/*.png
+
+# Stray Python scaffold (project is JS-only)
+/main.py
+/pyproject.toml
+/.python-version
+
+# Generated CLI test screenshots
+/tests/cli/screenshots/
