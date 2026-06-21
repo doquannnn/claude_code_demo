@@ -1,57 +1,133 @@
+/* ============================================================
+   Design System — Design Tokens
+   ============================================================ */
+:root {
+  /* Color palette */
+  --color-bg: #5a9e8a;
+  --color-surface: #ffffff;
+  --color-surface-hover: #e8f5f1;
+  --color-ink: #1a1a1a;
+  --color-on-bg: #ffffff;
+  --color-player-x: #d64545; /* X = red  */
+  --color-player-o: #2f6fb3; /* O = blue */
+  --color-win: #f4c430; /* highlight  */
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-sm: 1rem;
+  --fs-md: 1.2rem;
+  --fs-lg: 2rem;
+  --fw-bold: 700;
+  --tracking-wide: 0.05em;
+
+  /* Spacing scale (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-6: 2rem;
+
+  /* Sizing */
+  --cell-size: 38px;
+  --board-cols: 18;
+  --grid-gap: 2px;
+
+  /* Radius & elevation */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+  /* Motion */
+  --transition: 150ms ease;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
 body {
-  font-family: sans-serif;
+  font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
-  background-color: #5a9e8a;
-  color: #ffffff;
+  padding: var(--space-6);
+  background-color: var(--color-bg);
+  color: var(--color-on-bg);
 }
 
 h1 {
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-wide);
 }
 
 #status {
-  font-size: 1.2rem;
-  margin: 1rem 0;
+  font-size: var(--fs-md);
+  margin: var(--space-3) 0;
   min-height: 1.5rem;
 }
 
+/* ============================================================
+   Board & cells
+   ============================================================ */
 #board {
   display: grid;
-  grid-template-columns: repeat(18, 38px);
-  grid-template-rows: repeat(18, 38px);
-  gap: 2px;
+  grid-template-columns: repeat(var(--board-cols), var(--cell-size));
+  grid-template-rows: repeat(var(--board-cols), var(--cell-size));
+  gap: var(--grid-gap);
+  box-shadow: var(--shadow-2);
+  border-radius: var(--radius-sm);
 }
 
 .cell {
-  width: 38px;
-  height: 38px;
-  background: #ffffff;
-  border: 2px solid #1a1a1a;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-weight: bold;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  background: var(--color-surface);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   cursor: pointer;
-  color: #1a1a1a;
+  color: var(--color-ink);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background var(--transition);
 }
 
-.cell:hover:not([data-taken]) { background: #e8f5f1; }
-.cell[data-taken] { cursor: default; }
+.cell:hover:not([data-taken]) {
+  background: var(--color-surface-hover);
+}
+.cell[data-taken] {
+  cursor: default;
+}
+.cell[data-player="X"] {
+  color: var(--color-player-x);
+}
+.cell[data-player="O"] {
+  color: var(--color-player-o);
+}
 
+/* ============================================================
+   Controls
+   ============================================================ */
 #new-game {
-  margin-top: 1.5rem;
-  padding: 0.6rem 1.4rem;
-  font-size: 1rem;
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   cursor: pointer;
-  background: #1a1a1a;
-  color: #ffffff;
+  background: var(--color-ink);
+  color: var(--color-on-bg);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+#new-game:hover {
+  box-shadow: var(--shadow-2);
+}
+#new-game:active {
+  transform: translateY(1px);
 }

@@ -1,70 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gomoku</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Gomoku — 5 in a Row</h1>
-  <div id="status"></div>
-  <div id="board"></div>
-  <button id="new-game">New Game</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gomoku</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Gomoku — 5 in a Row</h1>
+    <div id="status"></div>
+    <div id="board"></div>
+    <button id="new-game">New Game</button>
 
-  <script type="module">
-    import { createGame, makeMove, aiMove } from './game.js';
+    <script type="module">
+      import { createGame, makeMove, aiMove } from "./game.js";
 
-    let state = createGame();
-    let aiThinking = false;
+      let state = createGame();
+      let aiThinking = false;
 
-    function triggerAI() {
-      if (state.winner || state.isDraw || state.currentPlayer !== 'O' || aiThinking) return;
-      aiThinking = true;
-      setTimeout(() => {
-        const idx = aiMove(state.board.slice());
-        state = makeMove(state, idx);
+      function triggerAI() {
+        if (
+          state.winner ||
+          state.isDraw ||
+          state.currentPlayer !== "O" ||
+          aiThinking
+        )
+          return;
+        aiThinking = true;
+        setTimeout(() => {
+          const idx = aiMove(state.board.slice());
+          state = makeMove(state, idx);
+          aiThinking = false;
+          render();
+        }, 100);
+      }
+
+      function render() {
+        const board = document.getElementById("board");
+        const status = document.getElementById("status");
+        board.innerHTML = "";
+        state.board.forEach((cell, index) => {
+          const div = document.createElement("div");
+          div.className = "cell";
+          div.textContent = cell ?? "";
+          if (cell) {
+            div.dataset.taken = "1";
+            div.dataset.player = cell;
+          }
+          if (
+            !state.winner &&
+            !state.isDraw &&
+            !cell &&
+            state.currentPlayer === "X" &&
+            !aiThinking
+          ) {
+            div.addEventListener("click", () => {
+              state = makeMove(state, index);
+              render();
+              triggerAI();
+            });
+          }
+          board.appendChild(div);
+        });
+        if (state.winner) {
+          status.textContent = `Player ${state.winner} wins!`;
+        } else if (state.isDraw) {
+          status.textContent = "It's a draw!";
+        } else if (aiThinking) {
+          status.textContent = "AI is thinking...";
+        } else {
+          status.textContent = `Player ${state.currentPlayer}'s turn`;
+        }
+      }
+
+      document.getElementById("new-game").addEventListener("click", () => {
+        state = createGame();
         aiThinking = false;
         render();
-      }, 100);
-    }
-
-    function render() {
-      const board = document.getElementById('board');
-      const status = document.getElementById('status');
-      board.innerHTML = '';
-      state.board.forEach((cell, index) => {
-        const div = document.createElement('div');
-        div.className = 'cell';
-        div.textContent = cell ?? '';
-        if (cell) div.dataset.taken = '1';
-        if (!state.winner && !state.isDraw && !cell && state.currentPlayer === 'X' && !aiThinking) {
-          div.addEventListener('click', () => {
-            state = makeMove(state, index);
-            render();
-            triggerAI();
-          });
-        }
-        board.appendChild(div);
       });
-      if (state.winner) {
-        status.textContent = `Player ${state.winner} wins!`;
-      } else if (state.isDraw) {
-        status.textContent = "It's a draw!";
-      } else if (aiThinking) {
-        status.textContent = 'AI is thinking...';
-      } else {
-        status.textContent = `Player ${state.currentPlayer}'s turn`;
-      }
-    }
 
-    document.getElementById('new-game').addEventListener('click', () => {
-      state = createGame();
-      aiThinking = false;
       render();
-    });
-
-    render();
-  </script>
-</body>
+    </script>
+  </body>
 </html>
